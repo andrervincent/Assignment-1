@@ -28,7 +28,11 @@ check_uppercase:
   #translation of A - F
   #add it to a sum
   addu $t2, $t2, $t1
-  sll $t4
+  #shift sum to the left by x
+  sllv $t2, $t2, $t4
+  #decrement x
+  subu $t4, $t4, 4
+  #jump to the loop
   j loop
   
 check_lowercase:
@@ -40,8 +44,8 @@ check_lowercase:
   #adds the hex to the sum
   addu $t2, $t2, $t1
   #shift the hex sum to the left
-  sll $t2, $t2, $t4
-  #decrement shift num
+  sllv $t2, $t2, $t4
+  #decrement shift x
   subu $t4, $t4, 4
 check_numbers:
   #checks for the range 0-9
@@ -52,7 +56,7 @@ check_numbers:
   #add the hex value to the sum
   addu $t2, $t2, $t1
   #shift the hex sum to the left
-  sll $t2, $t2, $t4
+  sllv $t2, $t2, $t4
   #decrement shift value
   subu $t4, $t4, 4
 check_ending:
