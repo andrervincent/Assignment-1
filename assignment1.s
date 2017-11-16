@@ -28,7 +28,8 @@ random_string: .asciiz "\nHello World!\n"
   addi $t8, $zero, 0                          #$t8 - handles the number of times the counting loop iterates
   addi $t9, $zero, 4                          #$t9 - byte constant; multiplied by the length to find the num places
                                               #       needed to shift by
-  
+  addi $s0, $zero, 0            # product of the integer multiplication to find power
+  addi $s1, $zero, 0            # sum for the final product
 length_of_array:
   #increments length of array by 1,
   #moves to next element in the array,
@@ -39,7 +40,7 @@ length_of_array:
   
   #prints the character
   li $v0, 1
-  la $a0, ($t8)
+  la $a0, ($t7)
   syscall
   # newline characters signify the end of the string, so move on
   # null characters are invalid, and will end the program
@@ -124,8 +125,12 @@ check_ending:
   beq $t1, 0, exit
   beq $t1, 10, exit
 compute_power:
-  
-  bne $t9, 4, compute_power
+#TODO - $t9 needs to become length -1 to make true exponent
+  multu $t5, $t5
+  mflo $s0              #finds the correct number to multiply by the number
+  addu $s1, $s0, 0
+  subu $t9, $t9, 1
+  bne $t9, 0, compute_power
 invalid:
   li $v0, 4   #system call for outputting strings
   la $a0, invalid_error #outputs error message
