@@ -2,167 +2,177 @@
 invalid_error:  .asciiz "\nInvalid character in input!\n"
 str:
   #declares space for 8 byte array
-  .space 8
-branch_error48: .asciiz "\nLess-than 48 character found \n"
-branch_error65: .asciiz "\nLess-than 65 character found \n"
-branch_error97: .asciiz "\nLess-than 97 character found \n"
-branch_error103: .asciiz "\nGreater-than 103 character found \n"
-random_string: .asciiz "\nHello World!\n"
+  .space 9
+error: .asciiz "Invalid hexadecimal number"
+newline: .asciiz "\n"
+
+
 .text
+
+main:     #needed so it runs in QTSPIM
+
   #loads string array into the address
   li $v0, 8
   la $a0, str
   li $a1, 9
   syscall
 
-  
-  
-  add $t0, $0, $zero                          #t0 - buffer for space in array that is used
-  lb $t1, 0($a0)                              #$t1 - holds elements of the array
-  add $t2, $0, $zero                          #$t2 - grand sum for hex
-  add $t3, $0, $zero                          #$t3 - iteration variable to handle num of iterations
-  addi $t4, $zero, 28                         #$t4 - variable for num of places to shift by
-  addi $t5, $zero, 16           #$t5 - variable for powers of 16
-  add $t6, $zero, $t1                         #$t6 - copy of array to find length of array
-  addi $t7, $zero, 0                          #$t7 - length of array copy
-  addi $t8, $zero, 0                          #$t8 - handles the number of times the counting loop iterates
-  addi $t9, $zero, 4                          #$t9 - byte constant; multiplied by the length to find the num places
-                                              #       needed to shift by
-  addi $s0, $zero, 0            # product of the integer multiplication to find power
-  addi $s1, $zero, 0            # sum for the final product
-length_of_array:
-  #increments length of array by 1,
-  #moves to next element in the array,
-  #increments counter 
-  add $t7, $t7, 1
-  add $t6, $t6, 1
-  add $t8, $t8, 1
-  
-  #prints the character
-  li $v0, 1
-  la $a0, ($t7)
+  la $a0, newline
+  li $v0, 4
   syscall
-  # newline characters signify the end of the string, so move on
-  # null characters are invalid, and will end the program
-  # continues length loop if there are still more characters left
-  beq $t6, '\n', calculate
-  beq $t6, '\0', invalid
-  bne $t8, 7, length_of_array
-  b calculate
-
-calculate: 
-  # multiplies number of characters by 4
-  # moves product from hi order bytes
-  multu $t8, $t9
-  mflo $t4
   
-  #prints shift num
-  #li $v0, 4
-  #la $a1, ($t4)
-  #syscall
-loop:
+  
+  add $s0, $0, $zero                          #s0 -- location to save a character
+  la $s1, str                                 #$s1 -- base address of string
+  add $s2, $0, $zero                          #$s2 -- grand sum for hex
+  add $s3, $0, $zero            #s3 -- character length of string
+  
+
+length_of_array:    
+
+  lb $s0, 0($s1)  #loads next byte
+  beq $s0, 10, exit_counter_loop  
+  beq $s0, 0, exit_counter_loop #exits if reading end of string (newline(pressed enter) or null (8characters0))
+   add $s1, $s1, 1  #adds to local address by 1 byte 
+    beq $s0, 32, length_of_array #case of reading a space, continueloop, increment byte but NOT COUNTER
+  add $s3, $s3, 1 #incrmeents counter if reading actual character
+   
+  j length_of_array
+
+exit_counter_loop:
+  # on exit of counter function, reinitialize values
+    
+  add $s0, $0, $zero                          #s0 -- location to save a character
+  la $s1, str                                 #$s1 -- base address of string
+  add $s2, $0, $zero                          #$s2 -- grand sum for hex
+   #s3 -- character length of string
+   
+       #algoritm for shifting the hex digits
+       # if you have a hex number of length n (Ex. 3 chars)
+       #      AAA
+       #  1: 1010
+       #  1: 1010 
+       #  1: 1010
+  # the binary equivalent is 1010 1010 1010
+  # For length 3, the first character is shifted by (3 - 1 * 4) = 8 bits
+  #     the second character is shifted (2 -1  * 4) = 4 bits
+  #so in general for length n, you shift N -1 * 4 bits for the first hex digit and then subtract 1 from N (or 4 from shift bits amount)
+  
+  li $t0, 4
+  sub $s3, $s3, 1 #subtracting 1 from length as per above
+  mult $t0, $s3  # N - 1 * 4
+  mflo $s4      # this is the base shift amount for N chars (ex. if 3 then this is 8 as per above)
+
+
+  
+  
+  
+      
+loop: 
+  lb $s0, 0($s1)    #loads next byte
   #checks for end of the input
-  beq $t1, 10, exit
-  beq $t1, 0, exit
+  beq $s0, 10, exit
+  beq $s0, 0, exit
+   #increment to next byte
+  add $s1, $s1, 1
+ 
+  beq $s0, 32, loop   #case of space, continue loop after incrementing byte
+  
   #if the decimal is less than 48, 
   #it is invalid
-  blt $t1, 48, branch48
+  blt $s0, 48, invalid
   #48=58 is the range for numbers
-  blt $t1, 58, check_numbers
+  blt $s0, 58, check_numbers
   #58-65 are invalid characters for hexadecimal
-  blt $t1, 65, branch65
+  blt $s0, 65, invalid
   #65-71 is the the range for A-F
-  blt $t1, 71, check_uppercase
+  blt $s0, 71, check_uppercase
   #71-97 is an invalid range for hexadecimal
-  blt $t1, 97, branch97
+  blt $s0, 97, invalid
   #97-103 is the range for a-f
-  blt $t1, 103, check_lowercase
+  blt $s0, 103, check_lowercase
   #any decimal over 103 is invalid for hexadecimal
-  bgt $t1, 103, branch103
+  bgt $s0, 103, invalid
   #jumps to loop again
   j loop
+  
 check_uppercase:
-  subu $t1, $t1, 55
+  subu $s0, $s0, 55
   #translation of A - F
   #add it to a sum
-  addu $t2, $t2, $t1
-  #shift sum to the left by x
-  sllv $t2, $t2, $t4
-  #decrement shift by 4
-  subu $t4, $t4, 4
-  #increment to next byte
-  add $t1, $a0, 1
+  
+  sllv $s0, $s0, $s4  #shifts the decimal number 
+  addu $s2, $s2, $s0    #adds to sum
+  
+  subu $s4, $s4, 4  #decrements shift amount
+
   #jump to the loop
   j loop
 check_lowercase:
   #calculates the hex value of the characters
-  subu $t1, $t1, 87
-  #adds the hex to the sum
-  addu $t2, $t2, $t1
-  #shift the hex sum to the left
-  sllv $t2, $t2, $t4
-  #decrement shift x
-  subu $t4, $t4, 4
-  #increments to next byte
-  add $t1, $a0, 1
-  #jump back to the loop
+  subu $s0, $s0, 87
+  
+  sllv $s0, $s0, $s4  #shifts the decimal number 
+  addu $s2, $s2, $s0    #adds to sum
+  
+  subu $s4, $s4, 4  #decrements shift amount
+  
+  #jump to the loop
   j loop
 check_numbers:
   #if in the range, calculate hex value
-  subu $t1, $t1, 48
+  subu $s0, $s0, 48
   #add the hex value to the sum
-  addu $t2, $t2, $t1
-  #shift the hex sum to the left
-  sllv $t2, $t2, $t4
-  #decrement shift value
-  subu $t4, $t4, 4
-  #increments to the next byte
-  addi $t1, $a0, 1
-  #jumps to loop
+  sllv $s0, $s0, $s4  #shifts the decimal number 
+  addu $s2, $s2, $s0    #adds to sum
+  
+  subu $s4, $s4, 4  #decrements shift amount
+
+  #jump to the loop
   j loop
-check_ending:
-  #checks for the endline or null character
-  beq $t1, 0, exit
-  beq $t1, 10, exit
-compute_power:
-#TODO - $t9 needs to become length -1 to make true exponent
-  multu $t5, $t5
-  mflo $s0              #finds the correct number to multiply by the number
-  addu $s1, $s0, 0
-  subu $t9, $t9, 1
-  bne $t9, 0, compute_power
 invalid:
   li $v0, 4   #system call for outputting strings
-  la $a0, invalid_error #outputs error message
+  la $a0, error #outputs error message
   syscall
   #ends program
   li $v0, 10
   syscall
-branch48:
-  li $v0, 4   #system call for outputting strings
-  la $a0, branch_error48  #outputs error message
-  syscall
-  j invalid
-branch65:
-  li $v0, 4   #system call for outputting strings
-  la $a0, branch_error65  #outputs error message
-  syscall
-  j invalid
-branch97:
-  li $v0, 4   #system call for outputting strings
-  la $a0, branch_error97  #outputs error message
-  syscall
-  j invalid
-branch103:
-  li $v0, 4   #system call for outputting strings
-  la $a0, branch_error103  #outputs error message
-  syscall
-  j invalid
+  
 exit:
+  
+  #check if number is 8 digits (case of 2s complement where first bit is 1!)
+  #already subtracted 1 from it sooooo check if its 7 instead
+  bgt $s3, 6, TwosComplement
+  
+  
+  
   #outputs sum
   li $v0, 1
-  add $a0, $t2, $0
+  add $a0, $s2, $0
   syscall 
+  
+  
   #ends program
   li $v0, 10
   syscall
+
+
+TwosComplement:
+  li $t0, 10000 #prints unsigned version of 2s complement by dividing  sum by 10000 and printing quotient remainder together
+  divu $s2, $t0
+  mflo $t1
+  mfhi $t2
+
+  add $a0, $t1, $zero
+  li $v0, 1
+  syscall
+  
+
+  add $a0, $t2, $zero
+  li $v0, 1
+  syscall         
+  
+  
+ 
+        li $v0,10 #end program
+        syscall
